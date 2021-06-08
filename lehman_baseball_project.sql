@@ -47,14 +47,56 @@ Sort this list in descending order by the total salary earned.
 Which Vanderbilt player earned the most money in the majors?
 */
 
+
+SELECT TRIM(c.country) AS country,
+       LEFT(year,4) AS calendar_year,
+	   COUNT(nobel_prize_winners) AS nobel_prize_winners,
+	   CASE WHEN pop_in_millions > '100' THEN 'large'
+	   		WHEN pop_in_millions BETWEEN '50' and '100' THEN 'medium'
+			WHEN pop_in_millions < '50' THEN 'small' END AS country_size
+FROM country_stats AS cs
+JOIN countries AS c
+ON cs.country_id=c.id
+GROUP BY country, year, pop_in_millions
+
 /*
 Q4 [S]
-Using the fielding table, group players into three groups based on their position:
-label players with position OF as "Outfield",
-those with position "SS", "1B", "2B", and "3B" as "Infield",
-and those with position "P" or "C" as "Battery".
-Determine the number of putouts made by each of these three groups in 2016.
+Using the fielding table,
+group players into three groups based on their position:
+	label players with position OF as "Outfield",
+	those with position "SS", "1B", "2B", and "3B" as "Infield",
+	and those with position "P" or "C" as "Battery".
+Determine the number of putouts
+			  made by each of these three groups
+			  in 2016.
+			  
+group players with case when for outfield, infield, battery
+sum po
+year=2016
 */
+
+WITH position_table AS (SELECT playerid,
+				  		 	   pos,
+				  		 	   po,
+				         	   yearid,
+						 	   CASE WHEN pos = 'OF' THEN 'Outfield'
+						 	  	    WHEN pos = 'SS' THEN 'Infield'
+							  		WHEN pos = '1B' THEN 'Infield'
+							  		WHEN pos = '2B' THEN 'Infield'
+							  		WHEN pos = '3B' THEN 'Infield'
+							  		WHEN pos = 'P' THEN 'Battery'
+							  		WHEN pos = 'C' THEN 'Battery' END AS position
+				 		FROM fielding)
+
+SELECT position, SUM(po)
+FROM position_table
+WHERE yearid = '2016'
+GROUP BY position
+
+--BATTERY: 41,424
+--INFIELD: 58,934
+--OUTFIELD: 29,560
+
 
 /*
 Q5 [P]
@@ -97,7 +139,46 @@ Which managers have won the TSN Manager of the Year award in both the National L
 Give their full name and the teams that they were managing when they won the award.
 */
 
+--look at awards managers and awards share managers tables (not in shared because only BBWAA there)
 
+WITH managers_awards AS (SELECT DISTINCT am1.yearid,
+						 				 am1.lgid AS lg1,
+						 				 am2.lgid AS lg2,
+						 				 mh.playerid,
+						 				 p.namegiven,
+						 				 p.namelast,
+						 				 t.teamid,
+						 				 t.name
+						 FROM awardsmanagers as am1
+						 	  INNER JOIN awardsmanagers AS am2
+						 	  USING (playerid)
+						      JOIN people AS p
+						 	  	ON am1.playerid=p.playerid
+						 	  JOIN managershalf AS mh
+						 		ON am1.playerid=mh.playerid
+						      JOIN teams AS t
+						 		ON mh.teamid=t.teamid
+						 WHERE am1.awardid ='TSN Manager of the Year'
+							AND am1.lgid='NL'
+							AND am2.lgid='AL')
+
+SELECT *
+FROM managers_awards
+ORDER BY namegiven
+
+
+
+SELECT DISTINCT am1.lgid
+FROM awardsmanagers AS am1
+JOIN people AS p
+ON am1.playerid=p.playerid
+JOIN managershalf AS mh
+ON am1.playerid=mh.playerid
+JOIN teams AS t
+ON mh.teamid=t.teamid
+LEFT JOIN awardsmanagers AS am2
+ON am1.lgid=am2.lgid
+WHERE am1.awardid ='TSN Manager of the Year'
 
 ------------------------------- OPEN ENDED QUESTIONS ------------------------------------
 /*
