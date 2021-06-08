@@ -48,16 +48,7 @@ Which Vanderbilt player earned the most money in the majors?
 */
 
 
-SELECT TRIM(c.country) AS country,
-       LEFT(year,4) AS calendar_year,
-	   COUNT(nobel_prize_winners) AS nobel_prize_winners,
-	   CASE WHEN pop_in_millions > '100' THEN 'large'
-	   		WHEN pop_in_millions BETWEEN '50' and '100' THEN 'medium'
-			WHEN pop_in_millions < '50' THEN 'small' END AS country_size
-FROM country_stats AS cs
-JOIN countries AS c
-ON cs.country_id=c.id
-GROUP BY country, year, pop_in_millions
+
 
 /*
 Q4 [S]
@@ -70,7 +61,7 @@ Determine the number of putouts
 			  made by each of these three groups
 			  in 2016.
 			  
-group players with case when for outfield, infield, battery
+Thoughts on execution: group players with case when for outfield, infield, battery
 sum po
 year=2016
 */
@@ -123,6 +114,8 @@ How often from 1970 – 2016 was it the case that a team with the most wins also
 What percentage of the time?
 */
 
+
+
 /*
 Q8 [P]
 Using the attendance figures from the homegames table,
@@ -141,44 +134,108 @@ Give their full name and the teams that they were managing when they won the awa
 
 --look at awards managers and awards share managers tables (not in shared because only BBWAA there)
 
-WITH managers_awards AS (SELECT DISTINCT am1.yearid,
+WITH managers_awards       AS (SELECT DISTINCT am1.yearid AS yearid1,
+						 			     am2.yearid AS yearid2,
 						 				 am1.lgid AS lg1,
 						 				 am2.lgid AS lg2,
-						 				 mh.playerid,
+						 				 m.playerid,
 						 				 p.namegiven,
 						 				 p.namelast,
 						 				 t.teamid,
-						 				 t.name
-						 FROM awardsmanagers as am1
-						 	  INNER JOIN awardsmanagers AS am2
-						 	  USING (playerid)
-						      JOIN people AS p
-						 	  	ON am1.playerid=p.playerid
-						 	  JOIN managershalf AS mh
-						 		ON am1.playerid=mh.playerid
-						      JOIN teams AS t
-						 		ON mh.teamid=t.teamid
-						 WHERE am1.awardid ='TSN Manager of the Year'
-							AND am1.lgid='NL'
-							AND am2.lgid='AL')
+							   			 am1.awardid AS award1,
+							   			 am2.awardid AS award2
+						 	FROM awardsmanagers as am1
+						 	 	 INNER JOIN awardsmanagers AS am2
+						 	 	 USING (playerid)
+						     	 JOIN people AS p
+						 	 	 	ON am1.playerid=p.playerid
+						 		  JOIN managers AS m
+						 			ON am1.playerid=m.playerid
+						    	    AND am1.yearid=m.yearid
+						    	  JOIN teams AS t
+						 			ON m.teamid=t.teamid)
+							  
+							 
 
-SELECT *
-FROM managers_awards
+SELECT DISTINCT ma.yearid1,ma.teamid,t.name,ma.lg1,ma.lg2,ma.playerid,ma.namegiven,ma.namelast
+FROM managers_awards as ma
+LEFT JOIN teams as t
+ON ma.teamid=t.teamid
+WHERE (lg1='AL'AND lg2='NL'
+AND award1 ='TSN Manager of the Year'
+AND award2 ='TSN Manager of the Year')
+OR (lg1='NL'AND lg2='AL'
+AND award1 ='TSN Manager of the Year'
+AND award2 ='TSN Manager of the Year')
+GROUP BY namegiven,ma.teamid,ma.yearid1,t.name,ma.lg1,ma.lg2,ma.playerid,namelast
 ORDER BY namegiven
 
 
+---------------------------
+WITH managers_awards       AS (SELECT DISTINCT am1.yearid AS yearid1,
+						 			     am2.yearid AS yearid2,
+						 				 am1.lgid AS lg1,
+						 				 am2.lgid AS lg2,
+						 				 m.playerid,
+						 				 p.namegiven,
+						 				 p.namelast,
+						 				 t.teamid,
+							   			 t.name,
+							   			 am1.awardid AS award1,
+							   			 am2.awardid AS award2
+						 	FROM awardsmanagers as am1
+						 	 	 INNER JOIN awardsmanagers AS am2
+						 	 	 USING (playerid)
+						     	 JOIN people AS p
+						 	 	 	ON am1.playerid=p.playerid
+						 		  JOIN managers AS m
+						 			ON am1.playerid=m.playerid
+						    	    AND am1.yearid=m.yearid
+						    	  JOIN teams AS t
+						 			ON m.teamid=t.teamid)
+							  
+							 
 
-SELECT DISTINCT am1.lgid
-FROM awardsmanagers AS am1
-JOIN people AS p
-ON am1.playerid=p.playerid
-JOIN managershalf AS mh
-ON am1.playerid=mh.playerid
-JOIN teams AS t
-ON mh.teamid=t.teamid
-LEFT JOIN awardsmanagers AS am2
-ON am1.lgid=am2.lgid
-WHERE am1.awardid ='TSN Manager of the Year'
+SELECT *
+FROM managers_awards
+
+WHERE (lg1='AL'AND lg2='NL'
+AND award1 ='TSN Manager of the Year'
+AND award2 ='TSN Manager of the Year')
+OR (lg1='NL'AND lg2='AL'
+AND award1 ='TSN Manager of the Year'
+AND award2 ='TSN Manager of the Year')
+GROUP BY namegiven
+ORDER BY namegiven
+--maybe make al & nl sep cte, join together
+SELECT *
+FROM awardsmanagers
+WHERE awardid ='TSN Manager of the Year'
+
+-----------------------------
+WITH managers_awards		AS (SELECT *
+						 		FROM awardsmanagers as am1
+						 	 	 INNER JOIN awardsmanagers AS am2
+						 	 	 USING (playerid)),
+WITH managers_names			AS (SELECT *
+							   FROM managers_awards as ma
+							   LEFT JOIN people as p
+							   ON ma.playerid=p.playerid),
+						     	 
+							  
+							 
+
+SELECT *
+FROM managers_names
+
+WHERE (lg1='AL'AND lg2='NL'
+AND award1 ='TSN Manager of the Year'
+AND award2 ='TSN Manager of the Year')
+OR (lg1='NL'AND lg2='AL'
+AND award1 ='TSN Manager of the Year'
+AND award2 ='TSN Manager of the Year')
+GROUP BY namegiven
+ORDER BY namegiven
 
 ------------------------------- OPEN ENDED QUESTIONS ------------------------------------
 /*
