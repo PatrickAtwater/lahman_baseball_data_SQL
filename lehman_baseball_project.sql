@@ -48,16 +48,7 @@ Which Vanderbilt player earned the most money in the majors?
 */
 
 
-SELECT TRIM(c.country) AS country,
-       LEFT(year,4) AS calendar_year,
-	   COUNT(nobel_prize_winners) AS nobel_prize_winners,
-	   CASE WHEN pop_in_millions > '100' THEN 'large'
-	   		WHEN pop_in_millions BETWEEN '50' and '100' THEN 'medium'
-			WHEN pop_in_millions < '50' THEN 'small' END AS country_size
-FROM country_stats AS cs
-JOIN countries AS c
-ON cs.country_id=c.id
-GROUP BY country, year, pop_in_millions
+
 
 /*
 Q4 [S]
@@ -70,7 +61,7 @@ Determine the number of putouts
 			  made by each of these three groups
 			  in 2016.
 			  
-group players with case when for outfield, infield, battery
+Thoughts on execution: group players with case when for outfield, infield, battery
 sum po
 year=2016
 */
@@ -123,6 +114,8 @@ How often from 1970 – 2016 was it the case that a team with the most wins also
 What percentage of the time?
 */
 
+
+
 /*
 Q8 [P]
 Using the attendance figures from the homegames table,
@@ -141,44 +134,53 @@ Give their full name and the teams that they were managing when they won the awa
 
 --look at awards managers and awards share managers tables (not in shared because only BBWAA there)
 
-WITH managers_awards AS (SELECT DISTINCT am1.yearid,
-						 				 am1.lgid AS lg1,
-						 				 am2.lgid AS lg2,
-						 				 mh.playerid,
-						 				 p.namegiven,
-						 				 p.namelast,
-						 				 t.teamid,
-						 				 t.name
-						 FROM awardsmanagers as am1
-						 	  INNER JOIN awardsmanagers AS am2
-						 	  USING (playerid)
-						      JOIN people AS p
-						 	  	ON am1.playerid=p.playerid
-						 	  JOIN managershalf AS mh
-						 		ON am1.playerid=mh.playerid
-						      JOIN teams AS t
-						 		ON mh.teamid=t.teamid
-						 WHERE am1.awardid ='TSN Manager of the Year'
-							AND am1.lgid='NL'
-							AND am2.lgid='AL')
+WITH managers_awards		AS (SELECT DISTINCT am1.yearid AS yearid1,
+									am1.playerid AS playerid,
+									am1.lgid AS lgid1,
+									am2.lgid AS lgid2,
+									am1.awardid AS awardid1
+						 		FROM awardsmanagers as am1
+						 	 	 INNER JOIN awardsmanagers AS am2
+						 	 	 USING (playerid)
+								 WHERE am1.awardid = 'TSN Manager of the Year'
+								 	AND am2.awardid = am1.awardid
+									AND am1.lgid <> 'ML'
+									AND am2.lgid <> 'ML'
+							   		AND am1.lgid <> am2.lgid),
+managers_names			AS (SELECT ma.yearid1 AS yearid,
+							       ma.playerid AS playerid,
+								   ma.lgid1 AS lgid1,
+								   ma.lgid2 AS lgid2,
+								   ma.awardid1 AS awardid,
+								   p.namefirst AS namefirst,
+								   p.namelast AS namelast
+							   FROM managers_awards as ma
+							   LEFT JOIN people as p
+							   ON ma.playerid=p.playerid),
+managers_table			AS (SELECT DISTINCT mn.yearid AS yearid,
+							       mn.playerid AS playerid,
+								   mn.namefirst AS namefirst,
+								   mn.namelast AS namelast,
+								   m.teamid AS teamid
+						   FROM managers_names AS mn
+						   LEFT JOIN managers AS m
+						   ON mn.playerid=m.playerid
+						   AND mn.yearid=m.yearid
+						   GROUP BY mn.yearid, mn.playerid,namefirst,namelast,teamid),					     	 
+managers_and_teams		AS(SELECT DISTINCT t.yearid AS yearid,
+							       mn.playerid AS playerid,
+								   mn.namefirst AS namefirst,
+								   mn.namelast AS namelast,
+						   		   t.name AS name
+						  FROM managers_table AS mn
+						  LEFT JOIN teams AS t
+						  ON mn.yearid=t.yearid
+						  AND mn.teamid=t.teamid)
+							 
 
 SELECT *
-FROM managers_awards
-ORDER BY namegiven
+FROM managers_and_teams
 
-
-
-SELECT DISTINCT am1.lgid
-FROM awardsmanagers AS am1
-JOIN people AS p
-ON am1.playerid=p.playerid
-JOIN managershalf AS mh
-ON am1.playerid=mh.playerid
-JOIN teams AS t
-ON mh.teamid=t.teamid
-LEFT JOIN awardsmanagers AS am2
-ON am1.lgid=am2.lgid
-WHERE am1.awardid ='TSN Manager of the Year'
 
 ------------------------------- OPEN ENDED QUESTIONS ------------------------------------
 /*
@@ -200,11 +202,250 @@ Q12
 In this question, you will explore the connection between number of wins and attendance.
 
 A. Does there appear to be any correlation between attendance at home games and number of wins?
-B. Do teams that win the world series see a boost in attendance the following year?
-What about teams that made the playoffs?
+B. 1. Do teams that win the world series see a boost in attendance the following year?
+   2. What about teams that made the playoffs?
 Making the playoffs means either being a division winner or a wild card winner
+
+thought process:
+will need table 27 (homegames) to see attendance
+table 8 (teams) to see teamid, team name (name), wins(w), division winner (DivWin) & wildcard winner (WCWin) = playoffs, world series winner (WSWin) for corellated following year's attendance
+maybe look at post tables for playoff performance?
+
+*/
+/*
+SELECT *
+FROM homegames
+
+SELECT *
+FROM teams
+WHERE wswin = 'Y'
+--yearid, 7 lgids (AA,AL,NA,PL,NL,UA,FL), 139 distinct team names, 149 distinct team ids, 236 rows where divwin = 'Y', 54 rows where wcwin = 'Y', 117 rows where wswin = 'Y'
+
+SELECT *
+FROM homegames AS h
+LEFT JOIN teams AS t
+ON h.year=t.yearid
+AND h.team=t.teamid
+
+--3006 rows
+
+SELECT t.year AS year
+	   t.teamid AS team_code
+	   t.name AS team_name
+	   h.games AS home_games
+	   h.attendance AS attendance
+	   t.g AS total_games_played
+	   
+FROM homegames AS h
+LEFT JOIN teams AS t
+ON h.year=t.yearid
+AND h.team=t.teamid
+
+STOPPED THERE AND SWITCHED GEARS BECAUSE I REALIZED THAT ATTENDANCE AND HOME GAMES WERE ON THE TEAMS TABLE
 */
 
+--------------------------------
+SELECT *
+FROM teams
+--2835 ROWS
+
+SELECT yearid, lgid, teamid, g, ghome, w, l, divwin, wcwin, wswin, name, attendance
+FROM teams
+
+--2835 ROWS
+SELECT yearid, lgid, teamid, g, ghome, w, l, divwin, wcwin, wswin, name, attendance
+FROM teams
+WHERE attendance IS NOT NULL
+--2556 ROWS
+SELECT yearid, lgid, teamid, g, ghome, w, l, divwin, wcwin, wswin, name, attendance
+FROM teams
+WHERE attendance IS NOT NULL
+AND ghome IS NOT NULL
+--2436 ROWS
+
+
+--B. 1. Do teams that win the world series see a boost in attendance the following year?
+--teams that won world series and attendance higher following year:
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.wswin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+--57 rows
+
+
+--teams that won world series and attendance lower following year:
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.wswin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance
+--54 rows
+
+
+
+--B. 2. What about teams that made the playoffs?
+
+--teams that have divwin as 'Y' and attendance higher
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.divwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+--127 rows
+
+
+--teams that have divwin as 'Y' and attendance lower
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.divwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance
+--102 rows
+
+
+--teams that have divwin as 'Y' but wswin as 'N' and attendance higher
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.divwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+AND t1.wswin='N'
+--99 rows
+
+
+--teams that have divwin as 'Y' but wswin as 'N' and attendance lower
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.divwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance
+AND t1.wswin='N'
+--90 rows
+
+
+--teams that have wcwin as 'Y' and attendance higher
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.wcwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+--35 rows
+
+
+--teams that have wcwin as 'Y' and attendance lower
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.wcwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance
+--15 rows
+
+
+--teams that have wcwin as 'Y' but wswin as 'N' and attendance higher
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.wcwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+AND t1.wswin='N'
+--30 rows
+
+
+--teams that have wcwin as 'Y' but wswin as 'N' and attendance lower
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.wcwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance
+AND t1.wswin='N'
+--14 rows
+
+
+--combined wcwin OR divwin and att higher
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE (t1.wcwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance)
+OR (t1.divwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance)
+--162 rows
+
+
+--combined wcwin OR divwin and att lower
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE (t1.wcwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance)
+OR (t1.divwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance)
+--117 rows
+
+
+--combined (wcwin OR divwin) AND wswin is N and att higher
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE (t1.wcwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+AND t1.wswin='N')
+OR (t1.divwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+AND t1.wswin='N')
+--129 rows
+
+
+--combined (wcwin OR divwin) AND wswin is N and att lower
+SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE (t1.wcwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance
+AND t1.wswin='N')
+OR (t1.divwin='Y'
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance
+AND t1.wswin='N')
+--104 rows
+
+--
 /*
 Q13
 It is thought that since left-handed pitchers are more rare, causing batters to face them less often, that they are more effective.
