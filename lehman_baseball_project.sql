@@ -134,108 +134,53 @@ Give their full name and the teams that they were managing when they won the awa
 
 --look at awards managers and awards share managers tables (not in shared because only BBWAA there)
 
-WITH managers_awards       AS (SELECT DISTINCT am1.yearid AS yearid1,
-						 			     am2.yearid AS yearid2,
-						 				 am1.lgid AS lg1,
-						 				 am2.lgid AS lg2,
-						 				 m.playerid,
-						 				 p.namegiven,
-						 				 p.namelast,
-						 				 t.teamid,
-							   			 am1.awardid AS award1,
-							   			 am2.awardid AS award2
-						 	FROM awardsmanagers as am1
-						 	 	 INNER JOIN awardsmanagers AS am2
-						 	 	 USING (playerid)
-						     	 JOIN people AS p
-						 	 	 	ON am1.playerid=p.playerid
-						 		  JOIN managers AS m
-						 			ON am1.playerid=m.playerid
-						    	    AND am1.yearid=m.yearid
-						    	  JOIN teams AS t
-						 			ON m.teamid=t.teamid)
-							  
-							 
-
-SELECT DISTINCT ma.yearid1,ma.teamid,t.name,ma.lg1,ma.lg2,ma.playerid,ma.namegiven,ma.namelast
-FROM managers_awards as ma
-LEFT JOIN teams as t
-ON ma.teamid=t.teamid
-WHERE (lg1='AL'AND lg2='NL'
-AND award1 ='TSN Manager of the Year'
-AND award2 ='TSN Manager of the Year')
-OR (lg1='NL'AND lg2='AL'
-AND award1 ='TSN Manager of the Year'
-AND award2 ='TSN Manager of the Year')
-GROUP BY namegiven,ma.teamid,ma.yearid1,t.name,ma.lg1,ma.lg2,ma.playerid,namelast
-ORDER BY namegiven
-
-
----------------------------
-WITH managers_awards       AS (SELECT DISTINCT am1.yearid AS yearid1,
-						 			     am2.yearid AS yearid2,
-						 				 am1.lgid AS lg1,
-						 				 am2.lgid AS lg2,
-						 				 m.playerid,
-						 				 p.namegiven,
-						 				 p.namelast,
-						 				 t.teamid,
-							   			 t.name,
-							   			 am1.awardid AS award1,
-							   			 am2.awardid AS award2
-						 	FROM awardsmanagers as am1
-						 	 	 INNER JOIN awardsmanagers AS am2
-						 	 	 USING (playerid)
-						     	 JOIN people AS p
-						 	 	 	ON am1.playerid=p.playerid
-						 		  JOIN managers AS m
-						 			ON am1.playerid=m.playerid
-						    	    AND am1.yearid=m.yearid
-						    	  JOIN teams AS t
-						 			ON m.teamid=t.teamid)
-							  
-							 
-
-SELECT *
-FROM managers_awards
-
-WHERE (lg1='AL'AND lg2='NL'
-AND award1 ='TSN Manager of the Year'
-AND award2 ='TSN Manager of the Year')
-OR (lg1='NL'AND lg2='AL'
-AND award1 ='TSN Manager of the Year'
-AND award2 ='TSN Manager of the Year')
-GROUP BY namegiven
-ORDER BY namegiven
---maybe make al & nl sep cte, join together
-SELECT *
-FROM awardsmanagers
-WHERE awardid ='TSN Manager of the Year'
-
------------------------------
-WITH managers_awards		AS (SELECT *
+WITH managers_awards		AS (SELECT DISTINCT am1.yearid AS yearid1,
+									am1.playerid AS playerid,
+									am1.lgid AS lgid1,
+									am2.lgid AS lgid2,
+									am1.awardid AS awardid1
 						 		FROM awardsmanagers as am1
 						 	 	 INNER JOIN awardsmanagers AS am2
-						 	 	 USING (playerid)),
-WITH managers_names			AS (SELECT *
+						 	 	 USING (playerid)
+								 WHERE am1.awardid = 'TSN Manager of the Year'
+								 	AND am2.awardid = am1.awardid
+									AND am1.lgid <> 'ML'
+									AND am2.lgid <> 'ML'
+							   		AND am1.lgid <> am2.lgid),
+managers_names			AS (SELECT ma.yearid1 AS yearid,
+							       ma.playerid AS playerid,
+								   ma.lgid1 AS lgid1,
+								   ma.lgid2 AS lgid2,
+								   ma.awardid1 AS awardid,
+								   p.namefirst AS namefirst,
+								   p.namelast AS namelast
 							   FROM managers_awards as ma
 							   LEFT JOIN people as p
 							   ON ma.playerid=p.playerid),
-						     	 
-							  
+managers_table			AS (SELECT DISTINCT mn.yearid AS yearid,
+							       mn.playerid AS playerid,
+								   mn.namefirst AS namefirst,
+								   mn.namelast AS namelast,
+								   m.teamid AS teamid
+						   FROM managers_names AS mn
+						   LEFT JOIN managers AS m
+						   ON mn.playerid=m.playerid
+						   AND mn.yearid=m.yearid
+						   GROUP BY mn.yearid, mn.playerid,namefirst,namelast,teamid),					     	 
+managers_and_teams		AS(SELECT DISTINCT t.yearid AS yearid,
+							       mn.playerid AS playerid,
+								   mn.namefirst AS namefirst,
+								   mn.namelast AS namelast,
+						   		   t.name AS name
+						  FROM managers_table AS mn
+						  LEFT JOIN teams AS t
+						  ON mn.yearid=t.yearid
+						  AND mn.teamid=t.teamid)
 							 
 
 SELECT *
-FROM managers_names
+FROM managers_and_teams
 
-WHERE (lg1='AL'AND lg2='NL'
-AND award1 ='TSN Manager of the Year'
-AND award2 ='TSN Manager of the Year')
-OR (lg1='NL'AND lg2='AL'
-AND award1 ='TSN Manager of the Year'
-AND award2 ='TSN Manager of the Year')
-GROUP BY namegiven
-ORDER BY namegiven
 
 ------------------------------- OPEN ENDED QUESTIONS ------------------------------------
 /*
