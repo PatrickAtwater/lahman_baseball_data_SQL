@@ -197,8 +197,7 @@ Use data from 2000 and later to answer this question.
 As you do this analysis, keep in mind that salaries across the whole league tend to increase together, so you may want to look on a year-by-year basis
 */
 
-/*
-Q12
+/*Q12
 In this question, you will explore the connection between number of wins and attendance.
 
 A. Does there appear to be any correlation between attendance at home games and number of wins?
@@ -212,6 +211,129 @@ table 8 (teams) to see teamid, team name (name), wins(w), division winner (DivWi
 maybe look at post tables for playoff performance?
 
 */
+
+
+/*q12 In this question, you will explore the connection between number of wins and attendance.
+A. Does there appear to be any correlation between attendance at home games and number of wins?*/
+
+
+
+---attendance up and wins up
+SELECT DISTINCT t1.yearid AS year_1,
+	   t2.yearid AS year_2,
+	   t1.name AS team_names,
+	   t1.w AS wins_year_1,
+	   t2.w AS wins_year_2,
+	   t1.attendance AS attendance_year_1,
+	   t2.attendance AS attendance_year_2,
+	   t1.l AS losses_year_1,
+	   t2.l AS losses_year_2
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.attendance IS NOT NULL
+AND t1.ghome IS NOT NULL
+AND t2. attendance IS NOT NULL
+AND t2.ghome IS NOT NULL
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+AND t1.w<t2.w
+--822 rows
+
+---attendance up, wins down
+SELECT DISTINCT t1.yearid AS year_1,
+	   t2.yearid AS year_2,
+	   t1.name AS team_names,
+	   t1.w AS wins_year_1,
+	   t2.w AS wins_year_2,
+	   t1.attendance AS attendance_year_1,
+	   t2.attendance AS attendance_year_2,
+	   t1.l AS losses_year_1,
+	   t2.l AS losses_year_2
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.attendance IS NOT NULL
+AND t1.ghome IS NOT NULL
+AND t2. attendance IS NOT NULL
+AND t2.ghome IS NOT NULL
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+AND t1.w>t2.w
+--350 rows
+
+-----------------------------------------------------------------
+
+---attendance up and wins up and losses down
+SELECT DISTINCT t1.yearid AS year_1,
+	   t2.yearid AS year_2,
+	   t1.name AS team_names,
+	   t1.w AS wins_year_1,
+	   t2.w AS wins_year_2,
+	   t1.attendance AS attendance_year_1,
+	   t2.attendance AS attendance_year_2,
+	   t1.l AS losses_year_1,
+	   t2.l AS losses_year_2
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.attendance IS NOT NULL
+AND t1.ghome IS NOT NULL
+AND t2. attendance IS NOT NULL
+AND t2.ghome IS NOT NULL
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+AND t1.w<t2.w
+AND t1.l>t2.l
+--728 rows
+
+
+--attendance up, wins up, losses up
+SELECT DISTINCT t1.yearid AS year_1,
+	   t2.yearid AS year_2,
+	   t1.name AS team_names,
+	   t1.w AS wins_year_1,
+	   t2.w AS wins_year_2,
+	   t1.attendance AS attendance_year_1,
+	   t2.attendance AS attendance_year_2,
+	   t1.l AS losses_year_1,
+	   t2.l AS losses_year_2
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.attendance IS NOT NULL
+AND t1.ghome IS NOT NULL
+AND t2. attendance IS NOT NULL
+AND t2.ghome IS NOT NULL
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance<t2.attendance
+AND t1.w<t2.w
+AND t1.l<t2.l
+--79 rows
+
+--attendance down, wins up, losses down
+SELECT DISTINCT t1.yearid AS year_1,
+	   t2.yearid AS year_2,
+	   t1.name AS team_names,
+	   t1.w AS wins_year_1,
+	   t2.w AS wins_year_2,
+	   t1.attendance AS attendance_year_1,
+	   t2.attendance AS attendance_year_2,
+	   t1.l AS losses_year_1,
+	   t2.l AS losses_year_2
+FROM teams AS t1 INNER JOIN teams AS t2
+USING(teamid)
+WHERE t1.attendance IS NOT NULL
+AND t1.ghome IS NOT NULL
+AND t2. attendance IS NOT NULL
+AND t2.ghome IS NOT NULL
+AND t1.yearid<t2.yearid
+AND t2.yearid=(t1.yearid+1)
+AND t1.attendance>t2.attendance
+AND t1.w<t2.w
+AND t1.l>t2.l
+--306 rows
+
 /*
 SELECT *
 FROM homegames
@@ -264,7 +386,11 @@ AND ghome IS NOT NULL
 --2436 ROWS
 
 
---B. 1. Do teams that win the world series see a boost in attendance the following year?
+/*Q12 In this question, you will explore the connection between number of wins and attendance.
+B. 1. Do teams that win the world series see a boost in attendance the following year?
+   2. What about teams that made the playoffs?
+Making the playoffs means either being a division winner or a wild card winner*/
+
 --teams that won world series and attendance higher following year:
 SELECT t1.name,t1.yearid,t1.attendance,t2.yearid,t2.attendance
 FROM teams AS t1 INNER JOIN teams AS t2
