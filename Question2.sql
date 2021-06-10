@@ -1,3 +1,4 @@
+--Q2
 SELECT namefirst, namelast, name, yearid, MIN(height) AS min_height, SUM(appearances.g_all) as total_games 
 FROM people
 LEFT JOIN appearances
